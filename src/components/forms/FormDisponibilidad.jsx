@@ -1,70 +1,182 @@
-import React from 'react';
+import React, { useState } from 'react';
+import CentroDropdown from '../ui/CentroDropdown';
+import { esFechaValida, esFechaDuplicada, primeraEnMayuscula, esCedulaValida } from '../../utils/functions';
+import { toast } from 'react-hot-toast';
+import { centrosAtencion } from '../../utils/centros';
 
-const FormDisponibilidad = () => {
+const FormDisponibilidad = ({ disponibilidad, agregarDisponibilidad }) => {
+    const [centro, setCentro] = useState('Seleccione un centro de atención');
+    const [nombre, setNombre] = useState('');
+    const [cedula, setCedula] = useState('');
+    const [fecha, setFecha] = useState('');
+    const [horaInicio, setHoraInicio] = useState('');
+    const [horaFin, setHoraFin] = useState('');
+
+    const centroSeleccionado = centrosAtencion.find(c => c.nombre === centro);
+
+    const handleFormSubmit = (e) => {
+        e.preventDefault();
+
+        // Validar fecha
+        if (!esFechaValida(fecha)) {
+            toast.error('La fecha ingresada debe ser posterior a la fecha actual.');
+            return;
+        }
+
+        // Verificar si la fecha está duplicada
+        if (esFechaDuplicada(fecha, cedula, disponibilidad)) {
+            toast.error('El médico ya tiene disponibilidad registrada en esta fecha.');
+            return;
+        }
+
+        if (!esCedulaValida(cedula)) {
+            toast.error('La cédula debe contener 10 dígitos');
+            return;
+        }
+
+        // Validar que el horario ingresado coincide con el del centro seleccionado
+        if (!centroSeleccionado) {
+            toast.error('Seleccione un centro de atención válido.');
+            return;
+        }
+
+        const { horaInicio: horaMin, horaFin: horaMax } = centroSeleccionado;
+
+        if (horaInicio < horaMin || horaFin > horaMax) {
+            toast.error(`Los horarios del ${centroSeleccionado.nombre} deben estar entre
+                 ${horaMin} y ${horaMax}.`);
+            return;
+        }
+
+
+
+        // Agregar la nueva disponibilidad
+        const nuevaDisponibilidad = {
+            centro,
+            nombre,
+            cedula,
+            fecha,
+            horaInicio,
+            horaFin
+        };
+        agregarDisponibilidad(nuevaDisponibilidad);
+
+        // Registro exitoso
+        toast.success("Disponibilidad registrada con éxito.");
+        setCentro("Seleccione un centro de atención");
+        setNombre("");
+        setCedula("");
+        setFecha("");
+        setHoraInicio("");
+        setHoraFin("");
+    };
+
     return (
         <section className='w-full flex flex-col justify-center items-center'>
-            <h3 className='uppercase'>Registro de Disponibilidad</h3>
-            <p>
-                Para garantizar un mejor servicio a sus pacientes, todos los profesionales
-                de la salud deben registrar su disponibilidad aquí.
-            </p>
-            <div className="w-full flex flex-col bg-neutral-50 py-8 px-10 rounded-lg shadow-lg gap-6
-                mt-6">
-                <form className='flex flex-col gap-6'>
-                    <label htmlFor="centro">
-                        Centro de Atención:
-                        <select id='centro' className='w-1/2 flex flex-col'>
-                            <option value="Centro de Atención Primaria">
-                                Centro de Atención Primaria 08:00-18:00
-                            </option>
-                            <option value="Centro de Atención Especializada">
-                                Centro de Atención Especializada 09:00-17:00
-                            </option>
-                        </select>
-                    </label>
-                <label htmlFor="medico" className='flex flex-col'>
-                    Nombre Completo:
-                    <input type="text" id="medico" required/>
-                </label>
-                <div className="flex justify-between">
-                    <label htmlFor="fecha" className='flex flex-col'>
-                        Fecha Disponible:
-                        <input type="date" id="fecha" required/>
-                    </label>
-                    <div className="flex gap-12">
-                        <label htmlFor="hora-inicio" className='flex flex-col'>
-                            Hora de inicio:
-                            <input
-                                type="time"
-                                id="hora-inicio"
-                                name="hora-inicio"
-                                min="08:00"
-                                max="18:00"
-                                required
-                                step="1800"/>
-                        </label>
+            <div className="w-2/3 flex flex-col justify-center items-center">
+                <h3 className='uppercase'>
+                    Registro de Disponibilidad
+                </h3>
+                <p className='mt-3'>
+                    Apreciado profesional de la salud, para garantizar un mejor servicio a sus pacientes,
+                    registre aquí su disponibilidad.
+                </p>
+                <div className="w-full flex flex-col bg-neutral-50 py-8 px-10 rounded-lg shadow-lg gap-6 mt-6">
+                    <form onSubmit={handleFormSubmit} className='flex flex-col gap-6'>
+                        <CentroDropdown
+                            value={centro}
+                            onChange={e => setCentro(e.target.value)}
+                            options={centrosAtencion.map(c => c.nombre)}
+                        />
 
-                        <label htmlFor="hora-fin" className='flex flex-col'>
-                            Hora de fin:
+                        <label htmlFor="nombre" className='flex flex-col'>
+                            <span className="text-sm text-gray-700">Nombre Completo:</span>
                             <input
-                                type="time"
-                                id="hora-fin"
-                                name="hora-fin"
-                                min="08:00"
-                                max="18:00"
+                                type="text"
+                                id="nombre"
+                                value={nombre}
+                                onChange={(e) => setNombre(e.target.value)}
                                 required
-                                step="1800"/>
+                                placeholder="Ingrese nombres y apellidos"
+                            />
                         </label>
+                        <label htmlFor="cedula" className='flex flex-col'>
+                            <span className="text-sm text-gray-700">Número de Cédula:</span>
+                            <input
+                                type="text"
+                                id="cedula"
+                                value={cedula}
+                                onChange={(e) => setCedula(e.target.value)}
+                                required
+                                placeholder="Ingrese el número de la cédula"
+                            />
+                        </label>
+                        <div className="flex justify-between gap-8">
+                            <label htmlFor="fecha" className='flex flex-col w-1/2'>
+                                <span className="text-sm text-gray-700">Fecha Disponible:</span>
+                                <input
+                                    type="date"
+                                    id="fecha"
+                                    value={fecha}
+                                    onChange={(e) => setFecha(e.target.value)}
+                                    required
+                                />
+                            </label>
+                            <div className="flex gap-6">
+                                <label htmlFor="hora-inicio" className='flex flex-col'>
+                                    <span className="text-sm text-gray-700">Hora de inicio:</span>
+                                    <input
+                                        type="time"
+                                        id="hora-inicio"
+                                        name="hora-inicio"
+                                        value={horaInicio}
+                                        onChange={(e) => setHoraInicio(e.target.value)}    
+                                        min="08:00"
+                                        max="18:00"
+                                        step="1800"
+                                        required
+                                    />
+                                </label>
 
-                    </div>
+                                <label htmlFor="hora-fin" className='flex flex-col'>
+                                    <span className="text-sm text-gray-700">Hora de fin:</span>
+                                    <input
+                                        type="time"
+                                        id="hora-fin"
+                                        name="hora-fin"
+                                        value={horaFin}
+                                        onChange={(e) => setHoraFin(e.target.value)}    
+                                        min="08:00"
+                                        max="18:00"
+                                        step="1800"
+                                        required
+                                    />
+                                </label>
+                            </div>
+                        </div>
+
+                        <button type="submit" className="">
+                            Registrar Disponibilidad
+                        </button>
+                    </form>
+
+                    <h4>Datos Registrados</h4>
+                    <ul id="listaCitas" className="list-disc ml-6">
+                        {disponibilidad.map((item) => (
+                            <li key={item.cedula}> 
+                                <strong>Médico:</strong> {primeraEnMayuscula(item.nombre)} <br />
+                                <strong>Cédula:</strong> {item.cedula} <br />
+                                <strong>Fecha:</strong> {item.fecha} <br />
+                                <strong>Horario:</strong> {item.horaInicio} - {item.horaFin} <br />
+                                <strong>Centro:</strong> {item.centro}
+                            </li>
+                        ))}
+                    </ul>
+
                 </div>
-                <button type="submit">Registrar Disponibilidad</button>
-                </form>
-                
-                <ul id="listaDisponibilidad"></ul>
             </div>
         </section>
-    )
+    );
 }
 
 export default FormDisponibilidad;
